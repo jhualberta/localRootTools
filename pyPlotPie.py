@@ -1,9 +1,12 @@
+# -*- coding: utf-8 -*-
+#!/usr/bin/python
+# plot db files 
 from matplotlib import pyplot as plt 
 
 #adjust size
 plt.figure(figsize=(6,9))
 #labels
-labels = [u'part 1',u'part2',u'part3']
+labels = [u'done',u'waiting',u'broken']
 #auto percentage
 sizes = [60,30,10]
 colors = ['red','yellowgreen','lightskyblue']

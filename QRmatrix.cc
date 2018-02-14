@@ -22,6 +22,14 @@
       lu.Invert(a);
       qr.Invert(b); 
       cout <<"LU composition"<<endl;
+      Double_t d1_lu; Double_t d2_lu;
+      lu.Det(d1_lu,d2_lu);
+      Double_t det3 = d1_lu*TMath::Power(2.,d2_lu);
+     // TMatrixD U3(H3,TMatrixD::kMult,H_square);
+     // TMatrixDDiag diag3(U3); diag3 = 0.0;
+     // const Double_t U3_max_offdiag = (U3.Abs()).Max();
+//      cout << "  Maximum off-diagonal = " << U3_max_offdiag << endl;
+      cout << "  Determinant          = " << det3 <<endl;
       a.Print();
       cout <<"QR composition"<<endl;
       b.Print();

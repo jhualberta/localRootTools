@@ -19,6 +19,8 @@
 #include <iostream>
 #include <stdlib.h> 
 #include <string>
+//HERE FOR MC, NOT DATA!!
+
 struct isoVal
 {
    double beta14;
@@ -39,7 +41,7 @@ void AnalysisN16mpw()
   Double_t xtrue,ytrue,rtrue,ztrue,rt;
   ofstream out,outputbadfiles;
   ostringstream oss;
-  in0.open("fileMPW.dat");
+  in0.open("undoneMPW.dat");
 
   // Define all of the histograms and ntuples that are to be made  
   //MPW no drive correction, with drive correction and ITR+beta14 cuts
@@ -68,22 +70,22 @@ void AnalysisN16mpw()
   double prompt_cut; 
   UInt_t day, sec, runNumber, eventGTID, fecd;
   double nsecs;
-  std::vector<double>* vtRes;
-  
+  std::vector<double>* vtRes;//for one event tRes can be multi-values
+  std::vector<UInt_t>* vfecd;//for one event fecd can be multi-values
   tree->Branch("posX",&posX,"posX/D");
   tree->Branch("posY",&posY,"posY/D");
   tree->Branch("posZ",&posZ,"posZ/D");
+  tree->Branch("posRad",&posRad,"posRad/D");
 
-  tree->Branch("posXcor",&posX,"posXcor/D");
-  tree->Branch("posYcor",&posY,"posYcor/D");
-  tree->Branch("posZcor",&posZ,"posZcor/D");
-  tree->Branch("posRadCor",&posZ,"posRadCor/D");
+  tree->Branch("posXcor",&posXcor,"posXcor/D");
+  tree->Branch("posYcor",&posYcor,"posYcor/D");
+  tree->Branch("posZcor",&posZcor,"posZcor/D");
+  tree->Branch("posRadCor",&posRadCor,"posRadCor/D");
   
   tree->Branch("posTheta",&posTheta,"posTheta/D");
   tree->Branch("posPhi",&posPhi,"posPhi/D");
   tree->Branch("time",&time,"time/D");
   tree->Branch("timeRes",&vtRes);
-  tree->Branch("posRad",&posRad,"posRad/D");
   tree->Branch("dirX",&dirX,"dirX/D");
   tree->Branch("dirY",&dirY,"dirY/D");
   tree->Branch("dirZ",&dirZ,"dirZ/D");
@@ -96,7 +98,7 @@ void AnalysisN16mpw()
   tree->Branch("eventGTID",&eventGTID,"eventGTID/i");
   tree->Branch("day",&day,"day/i");
   tree->Branch("sec",&sec,"sec/i");
-  tree->Branch("fecd",&fecd,"fecd/i");
+  tree->Branch("fecdID",&vfecd);
   tree->Branch("nsecs",&nsecs,"nsecs/D");
   tree->Branch("itr",&itr,"itr/D");
   tree->Branch("beta14",&iso,"iso/D");
@@ -142,9 +144,9 @@ void AnalysisN16mpw()
        
        size_t iEVCount = rDS.GetEVCount(); // Number of triggered events in this MC event
        
-       ULong64_t dcAnalysisWord = RAT::GetDataCleaningWord( "analysis_mask" );
+       //ULong64_t dcAnalysisWord = RAT::GetDataCleaningWord( "analysis_mask" );
 
-       if(iEntry%5000 == 0) {cout<<iEntry<<endl;}
+       //if(iEntry%5000 == 0) {cout<<iEntry<<endl;}
 	
     	// Looping over triggered events in each ds
 	if (iEVCount) {
@@ -155,8 +157,8 @@ void AnalysisN16mpw()
 	     const RAT::DS::CalPMTs& calpmts = ev.GetCalPMTs();
 	     runNumber = run.GetRunID();
 	     eventGTID = ev.GetGTID();
-	     RAT::DS::DataQCFlags dcflags = ev.GetDataCleaningFlags();
-             if( RAT::EventIsClean( ev, dcAnalysisWord ) )
+	     //RAT::DS::DataQCFlags dcflags = ev.GetDataCleaningFlags();
+             //if( RAT::EventIsClean( ev, dcAnalysisWord ) )
 	     {	  
  		  // Fill the nHit histogram, all events should have nHit
 		  Float_t nHitOfEvent = ev.GetNhits();
@@ -170,12 +172,12 @@ void AnalysisN16mpw()
 		  TVector3 pos_fit, pos_cor;
 		  TVector3 u_fit;
 		  const string fitName = "MultiPathProcessor";
-
+                  vfecd->clear();
                   for(unsigned int ipmt=0;ipmt<calpmts.GetFECDCount();ipmt++)//do FECD cuts
                   {
-                    fecd = calpmts.GetFECDPMT(ipmt).GetID();
+                    fecd = calpmts.GetFECDPMT(ipmt).GetID();vfecd->push_back(fecd);
                   }
-
+                  //for(vector<UInt_t>::iterator it = vfecd->begin();it != vfecd->end(); ++it){cout<<" vector "<<*it<<" ";} cout<<endl;
 		  if(((TriggerType&2)==2))// || ((TriggerType&18)==18))
 		  {
 		    if( ev.FitResultExists(fitName) ) 
@@ -203,24 +205,28 @@ void AnalysisN16mpw()
                         //!!! apply ITR and iso cuts here, use pos_fit or pos_cor 
                         //!!!!!!!!!!!!!!!
 			//!!!!!NOTE the difference use pos_cor or pos_fit for the following calculation
-			pos_fit = pos_cor;
+			//pos_fit = pos_cor;
+ 			//HERE USE pos_cor for Classifier calculation
                         double countPMT_ITR = 0;
                         vector<TVector3> pmtDir;
                         for(unsigned int ipmt=0;ipmt<calpmts.GetCount();ipmt++)
                         {
+                          //RAT::DS::PMTCal pmtCalSelect = rev.GetCalPMTs().GetPMT(ipmt);//NOTE: Javi's new selector, don't mix with calPMTs class!!!
+                          //if( pmtCalStat.GetHitStatus(pmtCalSelect) == 0 )//Javi: PMT selector 
+
                           TVector3 pmtpos = pmtInfo.GetPosition(calpmts.GetPMT(ipmt).GetID());
-                          pmtDir.push_back( (pmtpos -pos_fit).Unit() );
+                          pmtDir.push_back( (pmtpos -pos_cor).Unit() );
                           double hitTime =(calpmts.GetPMT(ipmt)).GetTime();
-                          double tRes = (calpmts.GetPMT(ipmt)).GetTime()-fVertex.GetTime()-(pmtpos-pos_fit).Mag()/grVelocity;
+                          double tRes = (calpmts.GetPMT(ipmt)).GetTime()-fVertex.GetTime()-(pmtpos-pos_cor).Mag()/grVelocity;
                           vtRes->push_back(tRes);
                           if(tRes<ITR_PMT_Hi && tRes>ITR_PMT_Lo) countPMT_ITR++;
                           //for beta14 cuts
                           //const TVector3 pmtDir1 = (pmtpos - pos_cor).Unit();
                             
 		          //do promt time cut
-		          prompt_cut = abs((pos_fit-pmtpos).Mag() - c_light/1.40*(hitTime-fVertex.GetTime())); 
+		          prompt_cut = abs((pos_cor-pmtpos).Mag() - c_light/1.40*(hitTime-fVertex.GetTime())); 
 			  //cout<<prompt_cut<<" "<<(pos_fit-pmtpos).Mag()<<" "<<hitTime-fVertex.GetTime()<<" "<<c_light/1.40*(hitTime-fVertex.GetTime())<<endl;
-			 }//for PMT loop
+			}//end of for PMT loop
                         struct isoVal isoresult = IsoClassifier(pmtDir);
                         iso = isoresult.beta14;
 			thij = isoresult.thetaij;
@@ -229,18 +235,16 @@ void AnalysisN16mpw()
                         hITR->Fill(ITR);hBeta14->Fill(isoresult.beta14);hITR_vs_Beta14->Fill(ITR,isoresult.beta14); hThetaij->Fill(isoresult.thetaij);
  
                         tree->Fill();
-                       } // fit Region Valid 
-       
-                       // Fill the nHit histogram if the event was inside the AV
                        if (radiusOfEvent >= 0. && radiusOfEvent <= 6000.) {
                           nHitAV->Fill(nHitOfEvent);
                         }
-                         
+                     } // fit Region Valid, R<9000 mm
+   
                      // **** Here you can put code to retrieve the ITR and Beta14 to select on those along with a the statement (radiusOfEvent <= 5500.)   
                          
                      // **** You can change the below ntuple to suit, adding in the universal time, it has everything else already
                   //candidateEventInfo->Fill(run.GetRunID(), ev.GetGTID(), nHitOfEvent, radiusOfEvent, cosThetaToSun, pos_fit.X(),  pos_fit.Y(), pos_fit.Z(), u_fit.X(),  u_fit.Y(),  u_fit.Z());  
-		 }//fit Name valid 		 
+		 }//fit Name Exist valid 		 
 	    } // trig cuts
 		   hTrig->Fill(TriggerType);
 	   } //data cleaning
@@ -262,9 +266,9 @@ void AnalysisN16mpw()
   
   cout<<countValid<<endl;
   // Write the histograms to fileName
-  TString newname = "MPWProcess_";
+  TString newname = "MPWmcProcess_";
   TString fileName(filenames);
-  TString runID(fileName(fileName.Index("r0"),11));
+  TString runID(fileName(fileName.Index("r10"),7));
   TString processname = newname+runID+".root";
   TFile *file=new TFile(processname,"RECREATE");
   file->cd();
