@@ -18,7 +18,7 @@
 #include <TMinuit.h>
 #include <algorithm>
 //global data
-TString filename = "SaveHisto_s000_r0000106948.root";
+TString filename = "SaveHisto_Jeff_r0000106948.root";
 
 int binTot = 2000;
 double lowBin = -9000, hiBin = 9000;
@@ -45,8 +45,9 @@ double posResolOutput(double *x, double *par)//output, 5 parameters
    cout<<"func "<<x<<" "<<funcPosResol<<endl;
 }
 
-TH1F *hchi = new TH1F("hchi","chi2 vs sigmaP",1000,100,1000);
-TH1F *hchi_tauP = new TH1F("hchi_tauP","chi2 vs tauP",1000,200,1000);
+TH1F *hchi_sigmaP = new TH1F("hchi_sigmaP","chi2 vs sigmaP",400,100,500);
+TH1F *hchi_muP = new TH1F("hchi_muP","chi2 vs muP",200,-100,100);
+TH1F *hchi_tauP = new TH1F("hchi_tauP","chi2 vs tauP",200,200,400);
 
 void cal_chi2(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t iflag)
 {
@@ -130,15 +131,16 @@ void cal_chi2(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t ifla
   double chi2 = 0;
   for(int ibin=0;ibin<iNum;ibin++)
   {
-    double temp = (NR[ibin]-Nfit[ibin])/10;
+    double temp = (NR[ibin]-Nfit[ibin])/((hiBin-lowBin)/binTot);
     chi2+=temp*temp;
   }
 	 		  
   //std::cout<<"cal chi2  "<<chi2<<std::endl; 
   f = chi2;
   std::cout<<par[0]<<" "<<par[1]<<" "<<par[2]<<" "<<par[3]<<" "<<f<<std::endl; 
-  hchi->Fill(par[0],chi2);
-  hchi_tauP->Fill(par[1],chi2);
+  hchi_sigmaP->Fill(par[0],chi2);
+  hchi_muP->Fill(par[1],chi2);
+  hchi_tauP->Fill(par[2],chi2);
   return;
 }
 
@@ -217,6 +219,7 @@ void Chi2Minimizer()
   hNfit_temp2->Scale(scalepeak/max2);
   hNfit->SetLineColor(kRed);
   hSx->GetXaxis()->UnZoom();
+  hSx->GetXaxis()->SetRangeUser(-3000,3000);
   hSx->Draw();//hNfit_temp2->Draw("same");
   hNfit->Draw("sames");
   //input data	
@@ -258,7 +261,7 @@ void Chi2Minimizer()
 
   // Set starting values and step sizes for parameters
   const int Npar = 3; 
-  static Double_t vstart[] = {172,mu_P0,320};
+  static Double_t vstart[] = {172,mu_P0,310};
   static Double_t step[] = {0.01,0.05,0.01};
 
   //ptMinuit->mnparm(0, "a_e", vstart[0], step[0], 0,0,ierflg);
@@ -269,8 +272,8 @@ void Chi2Minimizer()
 
   // Now ready for minimization step
 
-  arglist[0] = 1000;//5000;
-  arglist[1] = 0.1;//tolerance
+  arglist[0] = 5000;//5000;
+  arglist[1] = 1;//tolerance
   ptMinuit->mnexcm("MIGRAD", arglist ,Npar,ierflg);
   std::cout << "\nPrint results from minuit\n";
   double fParamVal;
@@ -291,7 +294,7 @@ void Chi2Minimizer()
 //  double scale = fParamVal;
 
   double a_e = 0.55;
-  TF1 *funMain = new TF1("fitPosResol",posResolOutput,lowBin,hiBin,5);
+  TF1 *funMain = new TF1("fitPosResol",posResolOutput,-3000,3000,5);
   funMain->SetParameters(a_e,sigmaP_r,muP_r,tauP_r,1);
   double peakfunc = funMain->GetMaximum();
   funMain->SetParameter(4,hNfit->GetMaximum()/peakfunc);
@@ -347,5 +350,8 @@ void Chi2Minimizer()
   hSx->Write();hNfit->Write();  
   funMain->Write();
   hConvlOutput->Write(); 
-  hchi->Write();
+  hchi_muP->Write();
+  hchi_sigmaP->Write();
+  hchi_tauP->Write();
+
 }
