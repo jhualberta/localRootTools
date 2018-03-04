@@ -4,6 +4,7 @@
   TMatrixD origin(N,N);
   TMatrixD a(N,N); TMatrixD b(N,N);
   TArrayD data(N*N);  
+  //example from wikipedia
   double array[N*N] = {12,-51,4,6,167,-68,-4,24,-41}; 
   for(int i =0;i<N*N;i++)
   {
@@ -37,4 +38,26 @@
 
   TMatrixD I = origin*a;
   I.Print();
+  double tol = 0.01;
+  TMatrixDSym cov(N);
+  for(int i=0;i<N;i++)
+  { 
+    for(int j=0;j<N;j++)
+    {
+      if(i==j) cov[i][j]=i;
+      else cov[i][j] = cov[j][i] = 1;
+    }
+  }
+  TMatrixD c1 = cov;
+
+  cov.Print();
+  TDecompBK bk(cov);
+  bk.Invert(cov);
+ // a.InvertBunchKaufman();
+  TMatrixD c2 = cov;
+
+  cov.Print();
+
+  TMatrixD I2 = c1*c2;
+  I2.Print();
 }
